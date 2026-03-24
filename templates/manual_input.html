@@ -1,0 +1,285 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+    <h2 style="margin:0 0 6px;">Manual Input</h2>
+    <p style="margin:0; color:#64748b;">
+        Tambahkan income atau expense secara manual, atau gunakan voice input.
+    </p>
+</div>
+
+<div class="grid-two" style="grid-template-columns: 1.2fr 0.8fr;">
+    <form method="POST" class="form-box" style="max-width:none;">
+        <label>Type</label>
+        <select name="type" id="type" required>
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+        </select>
+
+        <label>Store / Source Name</label>
+        <input type="text" name="store_name" id="store_name" placeholder="Contoh: Pasar, Allowance, Freelance" required>
+
+        <label>Amount</label>
+        <input type="number" step="0.01" name="amount" id="amount" placeholder="Contoh: 150.00" required>
+
+        <label>Category</label>
+        <select name="category" id="category" required>
+            <optgroup label="Expense Categories">
+                <option value="Grocery">Grocery</option>
+                <option value="Food">Food</option>
+                <option value="Transport">Transport</option>
+                <option value="Shopping">Shopping</option>
+                <option value="Health">Health</option>
+                <option value="Education">Education</option>
+                <option value="Other">Other</option>
+            </optgroup>
+            <optgroup label="Income Categories">
+                <option value="Allowance">Allowance</option>
+                <option value="Salary">Salary</option>
+                <option value="Freelance">Freelance</option>
+                <option value="Gift">Gift</option>
+                <option value="Refund">Refund</option>
+                <option value="Other Income">Other Income</option>
+            </optgroup>
+        </select>
+
+        <label>Date</label>
+        <input type="date" name="date" id="date" required>
+
+        <label>Note</label>
+        <textarea name="note" id="note" rows="4" placeholder="Optional note"></textarea>
+
+        <button type="submit" class="btn" style="margin-top:16px;">Save Transaction</button>
+    </form>
+
+    <div class="panel">
+        <div class="panel-header">
+            <h3>Voice Input</h3>
+        </div>
+
+        <p style="margin-top:0; color:#64748b;">
+            Contoh kalimat:
+        </p>
+
+        <div class="ocr-box" style="margin-bottom:16px;">
+            <p>“aku belanja di pasar 150 lira”</p>
+            <p>“income 2000 allowance”</p>
+            <p>“gelir 3000 burs”</p>
+            <p>“expense 80 taxi”</p>
+            <p>“migrostan 250 lira alışveriş yaptım”</p>
+        </div>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="btn secondary" id="startVoiceBtn">🎤 Start Voice Input</button>
+            <button type="button" class="btn" id="stopVoiceBtn">Stop</button>
+        </div>
+
+        <p id="voiceStatus" style="margin-top:14px; font-weight:bold; color:#0f766e;">Status: idle</p>
+
+        <label style="margin-top:16px; display:block; font-weight:bold;">Transcript</label>
+        <textarea id="voiceTranscript" rows="7" placeholder="Hasil suara akan muncul di sini..."></textarea>
+
+        <button type="button" class="btn" id="fillFormBtn" style="margin-top:14px;">Fill Form from Voice</button>
+    </div>
+</div>
+
+<script>
+    const startBtn = document.getElementById("startVoiceBtn");
+    const stopBtn = document.getElementById("stopVoiceBtn");
+    const statusText = document.getElementById("voiceStatus");
+    const transcriptBox = document.getElementById("voiceTranscript");
+    const fillFormBtn = document.getElementById("fillFormBtn");
+
+    const typeInput = document.getElementById("type");
+    const storeInput = document.getElementById("store_name");
+    const amountInput = document.getElementById("amount");
+    const categoryInput = document.getElementById("category");
+    const dateInput = document.getElementById("date");
+    const noteInput = document.getElementById("note");
+
+    if (!dateInput.value) {
+        dateInput.value = new Date().toISOString().split("T")[0];
+    }
+
+    let recognition = null;
+
+    if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.lang = "tr-TR";
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = function () {
+            statusText.textContent = "Status: listening...";
+        };
+
+        recognition.onresult = function (event) {
+            const transcript = event.results[0][0].transcript;
+            transcriptBox.value = transcript;
+            statusText.textContent = "Status: voice captured";
+        };
+
+        recognition.onerror = function (event) {
+            statusText.textContent = "Status: error - " + event.error;
+        };
+
+        recognition.onend = function () {
+            if (!statusText.textContent.includes("error")) {
+                statusText.textContent = "Status: stopped";
+            }
+        };
+
+        startBtn.addEventListener("click", function () {
+            recognition.start();
+        });
+
+        stopBtn.addEventListener("click", function () {
+            recognition.stop();
+        });
+    } else {
+        statusText.textContent = "Status: Speech recognition not supported in this browser";
+        startBtn.disabled = true;
+        stopBtn.disabled = true;
+    }
+
+    function normalizeText(text) {
+        return text
+            .toLowerCase()
+            .replace(/₺/g, " lira ")
+            .replace(/tl/g, " lira ")
+            .replace(/,/g, ".")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function detectType(text) {
+        const t = normalizeText(text);
+
+        const incomeWords = [
+            "income", "gelir", "maaş", "salary", "allowance", "burs",
+            "freelance", "refund", "gift", "hediye", "kazandım",
+            "aldım", "gelen para", "para geldi", "harçlık"
+        ];
+
+        const expenseWords = [
+            "expense", "gider", "belanja", "alışveriş", "harcama",
+            "beli", "aldım", "bayar", "ödedim", "taksi", "taxi",
+            "market", "pasar", "parkir", "makan", "yemek"
+        ];
+
+        const hasIncome = incomeWords.some(word => t.includes(word));
+        const hasExpense = expenseWords.some(word => t.includes(word));
+
+        if (hasIncome && !hasExpense) return "income";
+        return "expense";
+    }
+
+    function detectAmount(text) {
+        const t = normalizeText(text);
+
+        // cari angka desimal dulu
+        let match = t.match(/(\d+\.\d{1,2})/);
+        if (match) return match[1];
+
+        // cari angka bulat
+        match = t.match(/(\d{1,6})/);
+        if (match) return match[1];
+
+        return "";
+    }
+
+    function detectCategory(text, type) {
+        const t = normalizeText(text);
+
+        if (type === "income") {
+            if (t.includes("allowance") || t.includes("harçlık") || t.includes("burs")) return "Allowance";
+            if (t.includes("salary") || t.includes("maaş")) return "Salary";
+            if (t.includes("freelance")) return "Freelance";
+            if (t.includes("gift") || t.includes("hediye")) return "Gift";
+            if (t.includes("refund") || t.includes("geri ödeme")) return "Refund";
+            return "Other Income";
+        }
+
+        if (
+            t.includes("market") || t.includes("pasar") || t.includes("migros") ||
+            t.includes("şok") || t.includes("sok") || t.includes("a101") ||
+            t.includes("bim") || t.includes("sebze") || t.includes("meyve")
+        ) return "Grocery";
+
+        if (
+            t.includes("food") || t.includes("makan") || t.includes("yemek") ||
+            t.includes("cafe") || t.includes("kahve") || t.includes("coffee") ||
+            t.includes("restaurant") || t.includes("burger") || t.includes("pizza")
+        ) return "Food";
+
+        if (
+            t.includes("transport") || t.includes("taksi") || t.includes("taxi") ||
+            t.includes("otobüs") || t.includes("otobus") || t.includes("metro") ||
+            t.includes("bus") || t.includes("dolmuş") || t.includes("dolmus") ||
+            t.includes("parkir") || t.includes("park")
+        ) return "Transport";
+
+        if (t.includes("shopping") || t.includes("alışveriş") || t.includes("alisveris")) return "Shopping";
+        if (t.includes("health") || t.includes("eczane") || t.includes("hospital") || t.includes("doktor")) return "Health";
+        if (t.includes("education") || t.includes("kitap") || t.includes("kurs") || t.includes("okul")) return "Education";
+
+        return "Other";
+    }
+
+    function detectStore(text, type) {
+        const t = normalizeText(text);
+
+        const storeMap = [
+            ["migros", "Migros"],
+            ["şok", "ŞOK"],
+            ["sok", "ŞOK"],
+            ["a101", "A101"],
+            ["bim", "BIM"],
+            ["taxi", "Taxi"],
+            ["taksi", "Taksi"],
+            ["metro", "Metro"],
+            ["otobüs", "Otobüs"],
+            ["otobus", "Otobüs"],
+            ["pasar", "Pasar"],
+            ["market", "Market"],
+            ["allowance", "Allowance"],
+            ["burs", "Burs"],
+            ["salary", "Salary"],
+            ["maaş", "Maaş"],
+            ["freelance", "Freelance"]
+        ];
+
+        for (const [key, value] of storeMap) {
+            if (t.includes(key)) return value;
+        }
+
+        if (type === "income") return "Manual Income";
+        return "Manual Expense";
+    }
+
+    function smartFillForm(text) {
+        const detectedType = detectType(text);
+        const detectedAmount = detectAmount(text);
+        const detectedCategory = detectCategory(text, detectedType);
+        const detectedStore = detectStore(text, detectedType);
+
+        typeInput.value = detectedType;
+        if (detectedAmount) amountInput.value = detectedAmount;
+        categoryInput.value = detectedCategory;
+        storeInput.value = detectedStore;
+
+        if (!noteInput.value) {
+            noteInput.value = text;
+        }
+
+        statusText.textContent = "Status: form filled from voice";
+    }
+
+    fillFormBtn.addEventListener("click", function () {
+        const text = transcriptBox.value.trim();
+        if (!text) return;
+        smartFillForm(text);
+    });
+</script>
+{% endblock %}

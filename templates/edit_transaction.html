@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+    <h2 style="margin:0 0 6px;">Edit Transaction</h2>
+    <p style="margin:0; color:#64748b;">Update transaction details.</p>
+</div>
+
+<form method="POST" class="form-box" style="max-width:760px;">
+    <label>Type</label>
+    <select name="type" required>
+        <option value="expense" {% if transaction.type == 'expense' %}selected{% endif %}>Expense</option>
+        <option value="income" {% if transaction.type == 'income' %}selected{% endif %}>Income</option>
+    </select>
+
+    <label>Store / Source Name</label>
+    <input type="text" name="store_name" value="{{ transaction.store_name }}" required>
+
+    <label>Amount</label>
+    <input type="number" step="0.01" name="amount" value="{{ transaction.amount }}" required>
+
+    <label>Category</label>
+    <input type="text" name="category" value="{{ transaction.category }}" required>
+
+    <label>Date</label>
+    <input type="date" name="date" value="{{ transaction.date }}" required>
+
+    <label>Note</label>
+    <textarea name="note" rows="4">{{ transaction.note or '' }}</textarea>
+
+    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:16px;">
+        <button type="submit" class="btn">Update Transaction</button>
+        <a href="{{ url_for('transactions') }}" class="btn secondary">Back</a>
+    </div>
+</form>
+{% endblock %}

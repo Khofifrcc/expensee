@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+    <h2 style="margin:0 0 6px;">Scan Receipt</h2>
+    <p style="margin:0; color:#64748b;">Upload struk atau scan langsung dengan kamera, lalu simpan ke dashboard.</p>
+</div>
+
+{% if not preview_mode %}
+<div class="grid-two">
+    <div class="panel">
+        <h3>Upload Receipt</h3>
+        <form method="POST" enctype="multipart/form-data" class="form-box" style="box-shadow:none; padding:0;">
+            <label>Upload Receipt Image</label>
+            <input type="file" name="receipt" accept=".png,.jpg,.jpeg,.webp" required>
+            <button type="submit" class="btn" style="margin-top:16px;">Upload & Scan</button>
+        </form>
+    </div>
+
+    <div class="panel">
+        <h3>Scan with Camera</h3>
+
+        <video id="cameraPreview" autoplay playsinline style="width:100%; max-height:360px; background:#111; border-radius:14px;"></video>
+        <canvas id="cameraCanvas" style="display:none;"></canvas>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+            <button type="button" class="btn secondary" id="startCameraBtn">Start Camera</button>
+            <button type="button" class="btn" id="captureBtn">Capture & Scan</button>
+            <button type="button" class="btn" id="stopCameraBtn" style="background:#ef4444;">Stop Camera</button>
+        </div>
+
+        <p id="cameraStatus" style="margin-top:14px; color:#64748b;">Camera status: idle</p>
+
+        <form id="cameraUploadForm" method="POST" enctype="multipart/form-data" style="display:none;">
+            <input type="file" name="receipt" id="cameraImageInput">
+        </form>
+    </div>
+</div>
+
+<script>
+    const video = document.getElementById("cameraPreview");
+    const canvas = document.getElementById("cameraCanvas");
+    const startBtn = document.getElementById("startCameraBtn");
+    const captureBtn = document.getElementById("captureBtn");
+    const stopBtn = document.getElementById("stopCameraBtn");
+    const statusText = document.getElementById("cameraStatus");
+    const fileInput = document.getElementById("cameraImageInput");
+    const uploadForm = document.getElementById("cameraUploadForm");
+
+    let stream = null;
+
+    async function startCamera() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment" },
+                audio: false
+            });
+            video.srcObject = stream;
+            statusText.textContent = "Camera status: active";
+        } catch (error) {
+            statusText.textContent = "Camera status: failed to access camera";
+            console.error(error);
+        }
+    }
+
+    function stopCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            video.srcObject = null;
+            stream = null;
+            statusText.textContent = "Camera status: stopped";
+        }
+    }
+
+    function captureAndUpload() {
+        if (!stream) {
+            statusText.textContent = "Camera status: please start camera first";
+            return;
+        }
+
+        const context = canvas.getContext("2d");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob(function(blob) {
+            if (!blob) {
+                statusText.textContent = "Camera status: failed to capture image";
+                return;
+            }
+
+            const file = new File([blob], "captured_receipt.jpg", { type: "image/jpeg" });
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            fileInput.files = dataTransfer.files;
+
+            statusText.textContent = "Camera status: captured, uploading...";
+            uploadForm.submit();
+        }, "image/jpeg", 0.95);
+    }
+
+    startBtn.addEventListener("click", startCamera);
+    stopBtn.addEventListener("click", stopCamera);
+    captureBtn.addEventListener("click", captureAndUpload);
+</script>
+
+{% else %}
+<div class="grid-two">
+    <div class="panel">
+        <h3>Receipt Preview</h3>
+        <img src="{{ url_for('uploaded_file', filename=receipt_image) }}" alt="Receipt Preview" class="receipt-preview">
+
+        <details>
+            <summary style="cursor:pointer; font-weight:bold;">Show OCR Text</summary>
+            <div class="ocr-box" style="margin-top:12px;">
+                {% for line in ocr_lines %}
+                    <p>{{ line }}</p>
+                {% endfor %}
+            </div>
+        </details>
+    </div>
+
+    <div class="panel">
+        <h3>Confirm Data</h3>
+        <form method="POST" action="{{ url_for('save_scanned') }}" class="form-box" style="box-shadow:none; padding:0;">
+            <input type="hidden" name="receipt_image" value="{{ receipt_image }}">
+
+            <label>Store Name</label>
+            <input type="text" name="store_name" value="{{ store_name }}" required>
+
+            <label>Amount</label>
+            <input type="number" step="0.01" name="amount" value="{{ amount | replace(',', '.') }}" required>
+
+            <label>Category</label>
+            <select name="category" required>
+                <option value="Grocery" {% if category == 'Grocery' %}selected{% endif %}>Grocery</option>
+                <option value="Food" {% if category == 'Food' %}selected{% endif %}>Food</option>
+                <option value="Other" {% if category == 'Other' %}selected{% endif %}>Other</option>
+            </select>
+
+            <label>Date</label>
+            <input type="date" name="date" value="{{ date }}" required>
+
+            <label>Note</label>
+            <input type="text" name="note" placeholder="Optional note">
+
+            <button type="submit" class="btn" style="margin-top:16px;">Confirm & Save</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

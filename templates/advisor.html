@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:20px;">
+    <div>
+        <h2 style="margin:0 0 6px;">AI Financial Advisor</h2>
+        <p style="margin:0; color:#64748b;">Get personalized financial insights and recommendations.</p>
+    </div>
+
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <div style="background:#22c55e; color:white; padding:8px 14px; border-radius:999px; font-size:13px; font-weight:bold;">
+            Online
+        </div>
+
+        <form method="POST" action="{{ url_for('reset_advisor') }}">
+            <button type="submit" style="background:#ef4444; color:white; border:none; padding:10px 14px; border-radius:10px; cursor:pointer;">
+                Clear Chat
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="panel" style="padding:0; overflow:hidden;">
+    <div style="padding:20px; border-bottom:1px solid #e5e7eb; max-height:600px; overflow-y:auto;">
+        {% for msg in messages %}
+            {% if msg.role == "ai" %}
+                <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:18px;">
+                    <div style="width:42px; height:42px; border-radius:50%; background:#d1fae5; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
+                        🤖
+                    </div>
+                    <div style="max-width:760px;">
+                        <div style="background:white; border:1px solid #e5e7eb; border-radius:18px; padding:16px 18px; line-height:1.6;">
+                            {{ msg.text }}
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div style="display:flex; justify-content:flex-end; margin-bottom:18px;">
+                    <div style="max-width:760px;">
+                        <div style="background:#0ea5a4; color:white; border-radius:18px; padding:16px 18px; line-height:1.6;">
+                            {{ msg.text }}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+
+        <div style="margin-top:10px;">
+            {% for s in suggestions %}
+                <form method="POST" style="margin-bottom:10px;">
+                    <input type="hidden" name="message" value="{{ s }}">
+                    <button type="submit" style="width:100%; text-align:left; background:white; border:1px solid #e5e7eb; border-radius:14px; padding:14px 16px; cursor:pointer; font-size:16px;">
+                        {{ s }}
+                    </button>
+                </form>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div style="padding:18px 20px; border-top:1px solid #e5e7eb; background:#fafafa;">
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+            <span style="padding:10px 14px; border:1px solid #e5e7eb; border-radius:12px; background:white;">📉 Spending</span>
+            <span style="padding:10px 14px; border:1px solid #e5e7eb; border-radius:12px; background:white;">💡 Tips</span>
+            <span style="padding:10px 14px; border:1px solid #e5e7eb; border-radius:12px; background:white;">📈 Analysis</span>
+            <span style="padding:10px 14px; border:1px solid #e5e7eb; border-radius:12px; background:white;">💰 Savings</span>
+        </div>
+
+        <form method="POST" style="display:flex; gap:12px; align-items:center;">
+            <input
+                type="text"
+                name="message"
+                placeholder="Ask me anything about your finances..."
+                style="flex:1; padding:16px; border:1px solid #dbe2ea; border-radius:14px; font-size:15px;"
+                required
+            >
+            <button type="submit" class="btn" style="min-width:120px;">Send</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

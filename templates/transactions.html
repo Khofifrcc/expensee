@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+    <h2 style="margin:0 0 6px;">Transactions</h2>
+    <p style="margin:0; color:#64748b;">Riwayat semua transaksi income dan expense.</p>
+</div>
+
+<div class="panel" style="margin-bottom:20px;">
+    <form method="GET" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; align-items:end;">
+        <div>
+            <label style="display:block; margin-bottom:6px; font-weight:bold;">Type</label>
+            <select name="type">
+                <option value="">All</option>
+                <option value="income" {% if current_type == 'income' %}selected{% endif %}>Income</option>
+                <option value="expense" {% if current_type == 'expense' %}selected{% endif %}>Expense</option>
+            </select>
+        </div>
+
+        <div>
+            <label style="display:block; margin-bottom:6px; font-weight:bold;">Category</label>
+            <select name="category">
+                <option value="">All</option>
+                {% for cat in categories %}
+                    <option value="{{ cat.category }}" {% if current_category == cat.category %}selected{% endif %}>{{ cat.category }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label style="display:block; margin-bottom:6px; font-weight:bold;">Search</label>
+            <input type="text" name="search" value="{{ current_search }}" placeholder="Store or note">
+        </div>
+
+        <div>
+            <label style="display:block; margin-bottom:6px; font-weight:bold;">Date From</label>
+            <input type="date" name="date_from" value="{{ current_date_from }}">
+        </div>
+
+        <div>
+            <label style="display:block; margin-bottom:6px; font-weight:bold;">Date To</label>
+            <input type="date" name="date_to" value="{{ current_date_to }}">
+        </div>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button type="submit" class="btn">Filter</button>
+            <a href="{{ url_for('transactions') }}" class="btn secondary" style="text-align:center;">Reset</a>
+        </div>
+    </form>
+</div>
+
+<div class="panel">
+    <table>
+        <thead>
+            <tr>
+                <th>Store / Source</th>
+                <th>Amount</th>
+                <th>Category</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Receipt</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if transactions %}
+                {% for t in transactions %}
+                <tr>
+                    <td>{{ t.store_name }}</td>
+                    <td>{{ "%.2f"|format(t.amount) }}</td>
+                    <td>{{ t.category }}</td>
+                    <td>{{ t.date }}</td>
+                    <td>
+                        <span class="badge {{ t.type }}">{{ t.type }}</span>
+                    </td>
+                    <td>
+                        {% if t.receipt_image %}
+                            <img src="{{ url_for('uploaded_file', filename=t.receipt_image) }}" class="thumb" alt="Receipt">
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <a href="{{ url_for('edit_transaction', id=t.id) }}" style="color:#2563eb; text-decoration:none; font-weight:bold;">Edit</a>
+                            <a href="{{ url_for('delete_transaction', id=t.id) }}" style="color:#dc2626; text-decoration:none; font-weight:bold;">Delete</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="7">No transactions found.</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

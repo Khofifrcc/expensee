@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:20px;">
+    <div>
+        <h2 style="margin:0 0 6px;">Dashboard</h2>
+        <p style="margin:0; color:#64748b;">Ringkasan income, expense, balance, dan transaksi terbaru.</p>
+    </div>
+    <div class="quick-actions">
+        <a class="btn" href="{{ url_for('scan_receipt') }}">+ Scan Receipt</a>
+        <a class="btn secondary" href="{{ url_for('manual_input') }}">+ Manual Input</a>
+    </div>
+</div>
+
+<div class="cards">
+    <div class="card stat">
+        <h3>Total Income</h3>
+        <p>{{ "%.2f"|format(total_income) }}</p>
+    </div>
+    <div class="card stat">
+        <h3>Total Expense</h3>
+        <p>{{ "%.2f"|format(total_expense) }}</p>
+    </div>
+    <div class="card stat">
+        <h3>Balance</h3>
+        <p>{{ "%.2f"|format(balance) }}</p>
+    </div>
+    <div class="card stat">
+        <h3>Total Transactions</h3>
+        <p>{{ total_count }}</p>
+    </div>
+</div>
+
+<div class="grid-two" style="margin-bottom:20px;">
+    <div class="panel">
+        <div class="panel-header">
+            <h3>Expense Categories Chart</h3>
+        </div>
+        <canvas id="expensePieChart"></canvas>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <h3>Income vs Expense</h3>
+        </div>
+        <canvas id="incomeExpenseBarChart"></canvas>
+    </div>
+</div>
+
+<div class="grid-two">
+    <div class="panel">
+        <div class="panel-header">
+            <h3>Recent Transactions</h3>
+            <a href="{{ url_for('transactions') }}">View all</a>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Store / Source</th>
+                    <th>Amount</th>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Type</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if recent_transactions %}
+                    {% for t in recent_transactions %}
+                    <tr>
+                        <td>{{ t.store_name }}</td>
+                        <td>{{ "%.2f"|format(t.amount) }}</td>
+                        <td>{{ t.date }}</td>
+                        <td>{{ t.category }}</td>
+                        <td>
+                            <span class="badge {{ t.type }}">{{ t.type }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="5">Belum ada transaksi.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <h3>Top Expense Categories</h3>
+        </div>
+
+        {% if expense_categories %}
+            {% for item in expense_categories %}
+                <div class="category-item">
+                    <strong>{{ item.category }}</strong>
+                    <span>{{ "%.2f"|format(item.total) }}</span>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>Belum ada data expense.</p>
+        {% endif %}
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script id="chart-labels-data" type="application/json">
+{{ chart_labels | tojson }}
+</script>
+
+<script id="chart-values-data" type="application/json">
+{{ chart_values | tojson }}
+</script>
+
+<script id="income-data" type="application/json">
+{{ total_income | tojson }}
+</script>
+
+<script id="expense-data" type="application/json">
+{{ total_expense | tojson }}
+</script>
+
+<script>
+    const chartLabels = JSON.parse(document.getElementById("chart-labels-data").textContent);
+    const chartValues = JSON.parse(document.getElementById("chart-values-data").textContent);
+    const totalIncome = JSON.parse(document.getElementById("income-data").textContent);
+    const totalExpense = JSON.parse(document.getElementById("expense-data").textContent);
+
+    const pieCanvas = document.getElementById("expensePieChart");
+    if (pieCanvas) {
+        new Chart(pieCanvas, {
+            type: "pie",
+            data: {
+                labels: chartLabels.length ? chartLabels : ["No Data"],
+                datasets: [{
+                    data: chartValues.length ? chartValues : [1]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: "bottom"
+                    }
+                }
+            }
+        });
+    }
+
+    const barCanvas = document.getElementById("incomeExpenseBarChart");
+    if (barCanvas) {
+        new Chart(barCanvas, {
+            type: "bar",
+            data: {
+                labels: ["Income", "Expense"],
+                datasets: [{
+                    label: "Amount",
+                    data: [totalIncome, totalExpense]
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+</script>
+<div class="panel" style="margin-top:20px;">
+    <div class="panel-header">
+        <h3>🤖 AI Financial Advisor</h3>
+    </div>
+
+    {% if insights %}
+        <ul style="padding-left:20px;">
+            {% for insight in insights %}
+                <li style="margin-bottom:8px;">{{ insight }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No insights yet.</p>
+    {% endif %}
+</div>
+{% endblock %}
